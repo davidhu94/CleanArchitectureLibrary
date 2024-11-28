@@ -16,7 +16,10 @@ namespace API
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
-            builder.Services.AddApplication().AddInfrastructure();
+            builder.Services.AddApplication();
+            builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("DefaultConnection")!);
+
+            //builder.Services.AddAutoMapper(typeof(AuthorProfile).Assembly);
 
             var app = builder.Build();
 

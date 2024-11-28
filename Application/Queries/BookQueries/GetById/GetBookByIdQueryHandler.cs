@@ -1,23 +1,28 @@
-﻿using Domain.Models;
-using Infrastructure.Database;
+﻿using Application.Interfaces.RepositoryInterfaces;
+using Domain.Models;
 using MediatR;
 
 namespace Application.Queries.BookQueries.GetById
 {
     public class GetBookByIdQueryHandler : IRequestHandler<GetBookByIdQuery, Book>
     {
-        private readonly FakeDatabase _fakeDatabase;
+        private readonly IBookRepository _repository;
 
-        public GetBookByIdQueryHandler(FakeDatabase fakeDatabase)
+        public GetBookByIdQueryHandler(IBookRepository repository)
         {
-            _fakeDatabase = fakeDatabase ?? throw new ArgumentNullException(nameof(fakeDatabase));
+            _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         }
 
-        public Task<Book?> Handle(GetBookByIdQuery request, CancellationToken cancellationToken)
+        public async Task<Book?> Handle(GetBookByIdQuery request, CancellationToken cancellationToken)
         {
-            var wantedBook = _fakeDatabase.Books.FirstOrDefault(book => book.Id == request.Id);
+            var wantedBook = await _repository.GetByIdAsync(request.Id);
 
-            return Task.FromResult(wantedBook);
+            if (wantedBook == null)
+            {
+                throw new KeyNotFoundException($"Book with ID {request.Id} not found.");
+            }
+
+            return wantedBook;
         }
     }
 

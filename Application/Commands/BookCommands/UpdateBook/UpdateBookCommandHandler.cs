@@ -1,35 +1,37 @@
-﻿using Infrastructure.Database;
+﻿
+using Application.Interfaces.RepositoryInterfaces;
 using MediatR;
 
 namespace Application.Commands.BookCommands.UpdateBook
 {
     public class UpdateBookCommandHandler : IRequestHandler<UpdateBookCommand, bool>
     {
-        private readonly FakeDatabase _fakeDatabase;
+        private readonly IBookRepository _repository;
 
-        public UpdateBookCommandHandler(FakeDatabase fakeDatabase)
+        public UpdateBookCommandHandler(IBookRepository repository)
         {
-            _fakeDatabase = fakeDatabase ?? throw new ArgumentNullException(nameof(fakeDatabase));
+            _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         }
-        public Task<bool> Handle(UpdateBookCommand request, CancellationToken cancellationToken)
+        public async Task<bool> Handle(UpdateBookCommand request, CancellationToken cancellationToken)
         {
             if (request.Id <= 0)
             {
                 throw new ArgumentException("Invalid book ID.");
             }
 
-            var bookToUpdate = _fakeDatabase.Books.FirstOrDefault(book => book.Id == request.Id);
+            var bookToUpdate = await _repository.GetByIdAsync(request.Id);
 
             if (bookToUpdate == null)
             {
-                return Task.FromResult(false);
+                return false;
             }
 
             bookToUpdate.Title = request.Title;
             bookToUpdate.Description = request.Description;
             bookToUpdate.AuthorId = request.AuthorId;
 
-            return Task.FromResult(true);
+            await _repository.UpdateAsync(bookToUpdate);
+            return true;
         }
     }
 }

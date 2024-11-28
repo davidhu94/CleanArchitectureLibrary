@@ -1,33 +1,29 @@
-﻿using Infrastructure.Database;
+﻿using Application.Interfaces.RepositoryInterfaces;
+using Domain.Models;
 using MediatR;
 
 namespace Application.Commands.AuthorCommands.DeleteAuthor
 {
     public class DeleteAuthorCommandHandler : IRequestHandler<DeleteAuthorCommand, bool>
     {
-        private readonly FakeDatabase _fakeDatabase;
+        private readonly IAuthorRepository _repository;
 
-        public DeleteAuthorCommandHandler(FakeDatabase fakeDatabase)
+        public DeleteAuthorCommandHandler(IAuthorRepository repository)
         {
-            _fakeDatabase = fakeDatabase ?? throw new ArgumentNullException(nameof(fakeDatabase));
+            _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         }
 
-        public Task<bool> Handle(DeleteAuthorCommand request, CancellationToken cancellationToken)
+        public async Task<bool> Handle(DeleteAuthorCommand request, CancellationToken cancellationToken)
         {
             if (request.Id <= 0)
             {
                 throw new ArgumentException("Invalid author ID.");
             }
 
-            var authorToDelete = _fakeDatabase.Authors.FirstOrDefault(author => author.Id == request.Id);
+            var wasDeleted = await _repository.DeleteAsync(request.Id);
 
-            if (authorToDelete == null)
-            {
-                return Task.FromResult(false);
-            }
-
-            _fakeDatabase.Authors.Remove(authorToDelete);
-            return Task.FromResult(true);
+            
+            return wasDeleted;
         }
     }
 }

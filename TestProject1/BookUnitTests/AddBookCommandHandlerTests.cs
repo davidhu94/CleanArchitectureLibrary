@@ -1,29 +1,41 @@
 ﻿using Application.Commands.BookCommands.AddBook;
-using Infrastructure.Database;
+using Application.Interfaces.RepositoryInterfaces;
+using Domain.Models;
+using Moq;
+using NUnit.Framework;
+using System;
+using System.Threading.Tasks;
 
 namespace TestProject1.BookUnitTests
 {
     public class AddBookCommandHandlerTests
     {
-        private FakeDatabase _fakeDatabase;
+        private Mock<IBookRepository> _bookRepositoryMock;
+        private Mock<IAuthorRepository> _authorRepositoryMock;
 
         [SetUp]
         public void Setup()
         {
-            _fakeDatabase = new FakeDatabase();
+            _bookRepositoryMock = new Mock<IBookRepository>();
+            _authorRepositoryMock = new Mock<IAuthorRepository>();
         }
 
         [Test]
         public async Task AddBook_ShouldReturnNewBookId_WhenValidData()
         {
             var command = new AddBookCommand("New Book Title", "This is a book description.", 1);
+            var handler = new AddBookCommandHandler(_bookRepositoryMock.Object, _authorRepositoryMock.Object);
 
-            var handler = new AddBookCommandHandler(_fakeDatabase);
+            _authorRepositoryMock.Setup(repo => repo.GetByIdAsync(1))
+                .ReturnsAsync(new Author { Id = 1, Name = "Existing Author" });
+
+            _bookRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<Book>()))
+                .Returns(Task.CompletedTask);
 
             var result = await handler.Handle(command, default);
 
-            Assert.That(result, Is.EqualTo(6));
-            Assert.That(_fakeDatabase.Books.Any(b => b.Id == result), Is.True);
+            Assert.That(result, Is.GreaterThan(0));
+            _bookRepositoryMock.Verify(repo => repo.AddAsync(It.IsAny<Book>()), Times.Once);
         }
 
         [Test]
@@ -33,13 +45,24 @@ namespace TestProject1.BookUnitTests
             var commandWithEmptyDescription = new AddBookCommand("Title", "", 1);
             var commandWithNullTitle = new AddBookCommand(null, "This is a description.", 1);
             var commandWithNullDescription = new AddBookCommand("Title", null, 1);
-
-            var handler = new AddBookCommandHandler(_fakeDatabase);
+            var handler = new AddBookCommandHandler(_bookRepositoryMock.Object, _authorRepositoryMock.Object);
 
             Assert.ThrowsAsync<ArgumentException>(() => handler.Handle(commandWithEmptyTitle, default));
             Assert.ThrowsAsync<ArgumentException>(() => handler.Handle(commandWithEmptyDescription, default));
             Assert.ThrowsAsync<ArgumentException>(() => handler.Handle(commandWithNullTitle, default));
             Assert.ThrowsAsync<ArgumentException>(() => handler.Handle(commandWithNullDescription, default));
+        }
+
+        [Test]
+        public void AddBook_ShouldThrowArgumentException_WhenAuthorDoesNotExist()
+        {
+            var command = new AddBookCommand("New Book Title", "This is a book description.", 1);
+            var handler = new AddBookCommandHandler(_bookRepositoryMock.Object, _authorRepositoryMock.Object);
+
+            _authorRepositoryMock.Setup(repo => repo.GetByIdAsync(1))
+                .ReturnsAsync((Author)null);
+
+            Assert.ThrowsAsync<ArgumentException>(() => handler.Handle(command, default));
         }
     }
 }
