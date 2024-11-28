@@ -1,34 +1,37 @@
-﻿using Infrastructure.Database;
+﻿using Application.Interfaces.RepositoryInterfaces;
+using Domain.Models;
 using MediatR;
 
 namespace Application.Commands.AuthorCommands.UpdateAuthor
 {
     public class UpdateAuthorCommandHandler : IRequestHandler<UpdateAuthorCommand, bool>
     {
-        private readonly FakeDatabase _fakeDatabase;
+        private readonly IAuthorRepository _repository;
 
-        public UpdateAuthorCommandHandler(FakeDatabase fakeDatabase)
+        public UpdateAuthorCommandHandler(IAuthorRepository repository)
         {
-            _fakeDatabase = fakeDatabase ?? throw new ArgumentNullException(nameof(fakeDatabase));
+            _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         }
 
-        public Task<bool> Handle(UpdateAuthorCommand request, CancellationToken cancellationToken)
+        public async Task<bool> Handle(UpdateAuthorCommand request, CancellationToken cancellationToken)
         {
             if (request.Id <= 0)
             {
                 throw new ArgumentException("Invalid author ID.");
             }
 
-            var authorToUpdate = _fakeDatabase.Authors.FirstOrDefault(author => author.Id == request.Id);
+            var authorToUpdate = await _repository.GetByIdAsync(request.Id);
 
             if (authorToUpdate == null)
             {
-                return Task.FromResult(false);
+                return false;
             }
 
             authorToUpdate.Name = request.Name;
 
-            return Task.FromResult(true);
+            await _repository.UpdateAsync(authorToUpdate);
+
+            return true;
         }
     }
 }

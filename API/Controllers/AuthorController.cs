@@ -1,9 +1,10 @@
 ﻿using Application.Commands.AuthorCommands.AddAuthor;
 using Application.Commands.AuthorCommands.DeleteAuthor;
 using Application.Commands.AuthorCommands.UpdateAuthor;
+using Application.DTOs.AuthorDTOs;
+using Application.Mappers;
 using Application.Queries.AuthorQueries.GetAll;
 using Application.Queries.AuthorQueries.GetById;
-using Domain.Models;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,8 +24,17 @@ namespace API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllAuthors()
         {
-            var authors = await _mediator.Send(new GetAllAuthorsQuery());
-            return Ok(authors);
+            try
+            {
+                var authors = await _mediator.Send(new GetAllAuthorsQuery());
+                var authorDtos = authors.Select(AuthorMapper.ToDto).ToList();
+                return Ok(authorDtos);
+            }
+            catch (Exception ex)
+            {
+
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
         }
 
         [HttpGet("{id}")]
@@ -41,17 +51,20 @@ namespace API.Controllers
             {
                 return NotFound($"Author with ID {id} not found.");
             }
-
-            return Ok(author);
+            var authorDto = AuthorMapper.ToDto(author);
+            return Ok(authorDto);
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddAuthor([FromBody] AddAuthorCommand command)
+        public async Task<IActionResult> AddAuthor([FromBody] AddAuthorDto addAuthorDto)
         {
-            if (command == null)
+            if (addAuthorDto == null)
             {
                 return BadRequest("Author data is required.");
             }
+
+            var author = AuthorMapper.ToModel(addAuthorDto);
+            var command = new AddAuthorCommand(author.Name);
 
             var newAuthorId = await _mediator.Send(command);
 
@@ -59,24 +72,27 @@ namespace API.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateAuthor(int id, [FromBody] Author updatedAuthor)
+        public async Task<IActionResult> UpdateAuthor(int id, [FromBody] UpdateAuthorDto updateAuthorDto)
         {
-            if (updatedAuthor == null)
+
+            if (updateAuthorDto == null)
             {
                 return BadRequest("Updated author data is required.");
             }
 
-            if (id != updatedAuthor.Id)
+            if (id != updateAuthorDto.Id)
             {
                 return BadRequest("The ID in the URL must match the author ID in the request body.");
             }
 
-            if (string.IsNullOrWhiteSpace(updatedAuthor.Name))
+            if (string.IsNullOrWhiteSpace(updateAuthorDto.Name))
             {
                 return BadRequest("Author name is required.");
             }
 
-            var command = new UpdateAuthorCommand(updatedAuthor.Id, updatedAuthor.Name);
+            var author = AuthorMapper.ToModel(updateAuthorDto);
+            var command = new UpdateAuthorCommand(author.Id, author.Name);
+
             var updated = await _mediator.Send(command);
 
             if (!updated)
@@ -85,6 +101,7 @@ namespace API.Controllers
             }
 
             return NoContent();
+
         }
 
         [HttpDelete("{id}")]

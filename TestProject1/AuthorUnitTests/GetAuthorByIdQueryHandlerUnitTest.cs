@@ -1,38 +1,47 @@
-﻿using Application.Queries.AuthorQueries.GetById;
-using Infrastructure.Database;
+﻿using Application.Interfaces.RepositoryInterfaces;
+using Application.Queries.AuthorQueries.GetById;
+using Domain.Models;
+using Moq;
 
 namespace TestProject1.AuthorUnitTests
 {
     public class GetAuthorByIdQueryHandlerUnitTest
     {
-        private FakeDatabase _fakeDatabase;
+        private Mock<IAuthorRepository> _repositoryMock;
 
         [SetUp]
         public void Setup()
         {
-            _fakeDatabase = new FakeDatabase();
+            _repositoryMock = new Mock<IAuthorRepository>();
         }
 
         [Test]
         public async Task GetAuthorById_ShouldReturnAuthor_WhenAuthorExists()
         {
-            var fakeDatabase = new FakeDatabase();
             var existingAuthorId = 1;
-            var handler = new GetAuthorByIdQueryHandler(fakeDatabase);
+            var existingAuthor = new Author { Id = existingAuthorId, Name = "Author 1" };
+
+            _repositoryMock.Setup(r => r.GetByIdAsync(existingAuthorId))
+                .ReturnsAsync(existingAuthor);
+
+            var handler = new GetAuthorByIdQueryHandler(_repositoryMock.Object);
 
             var result = await handler.Handle(new GetAuthorByIdQuery(existingAuthorId), CancellationToken.None);
 
             Assert.That(result, Is.Not.Null);
             Assert.That(result?.Id, Is.EqualTo(existingAuthorId));
-            Assert.That(result?.Name, Is.EqualTo(fakeDatabase.Authors.First(a => a.Id == existingAuthorId).Name));
+            Assert.That(result?.Name, Is.EqualTo(existingAuthor.Name));
         }
 
         [Test]
         public async Task GetAuthorById_ShouldReturnNull_WhenAuthorDoesNotExist()
         {
-            var fakeDatabase = new FakeDatabase();
             var nonExistingAuthorId = 999;
-            var handler = new GetAuthorByIdQueryHandler(fakeDatabase);
+
+            _repositoryMock.Setup(r => r.GetByIdAsync(nonExistingAuthorId))
+                .ReturnsAsync((Author)null);
+
+            var handler = new GetAuthorByIdQueryHandler(_repositoryMock.Object);
 
             var result = await handler.Handle(new GetAuthorByIdQuery(nonExistingAuthorId), CancellationToken.None);
 

@@ -16,5 +16,7 @@ namespace Domain.Models
             Description = description;
             AuthorId = authorId;
         }
+
+        public Book() { }
     }
 }

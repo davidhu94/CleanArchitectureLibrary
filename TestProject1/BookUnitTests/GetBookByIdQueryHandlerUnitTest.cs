@@ -1,36 +1,43 @@
 ﻿using Application.Queries.BookQueries.GetById;
-using Infrastructure.Database;
+using Moq;
+using Application.Interfaces.RepositoryInterfaces;
+using Domain.Models;
 
 namespace TestProject1.BookUnitTests
 {
     public class GetBookByIdQueryHandlerUnitTest
     {
-        private FakeDatabase _fakeDatabase;
+        private Mock<IBookRepository> _bookRepositoryMock;
 
         [SetUp]
         public void Setup()
         {
-            _fakeDatabase = new FakeDatabase();
+            _bookRepositoryMock = new Mock<IBookRepository>();
         }
 
         [Test]
         public async Task GetBookById_ShouldReturnBook_WhenBookExists()
         {
             var existingBookId = 1;
-            var handler = new GetBookByIdQueryHandler(_fakeDatabase);
+            var book = new Book { Id = existingBookId, Title = "Book 1", Description = "Description 1", AuthorId = 1 };
+            _bookRepositoryMock.Setup(x => x.GetByIdAsync(existingBookId)).ReturnsAsync(book);
+
+            var handler = new GetBookByIdQueryHandler(_bookRepositoryMock.Object);
 
             var result = await handler.Handle(new GetBookByIdQuery(existingBookId), CancellationToken.None);
 
             Assert.That(result, Is.Not.Null);
             Assert.That(result?.Id, Is.EqualTo(existingBookId));
-            Assert.That(result?.Title, Is.EqualTo(_fakeDatabase.Books.First(b => b.Id == existingBookId).Title));
+            Assert.That(result?.Title, Is.EqualTo(book.Title));
         }
 
         [Test]
         public async Task GetBookById_ShouldReturnNull_WhenBookDoesNotExist()
         {
             var nonExistingBookId = 999;
-            var handler = new GetBookByIdQueryHandler(_fakeDatabase);
+            _bookRepositoryMock.Setup(x => x.GetByIdAsync(nonExistingBookId)).ReturnsAsync((Book)null);
+
+            var handler = new GetBookByIdQueryHandler(_bookRepositoryMock.Object);
 
             var result = await handler.Handle(new GetBookByIdQuery(nonExistingBookId), CancellationToken.None);
 

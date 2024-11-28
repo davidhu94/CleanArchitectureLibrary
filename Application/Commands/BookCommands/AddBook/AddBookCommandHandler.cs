@@ -1,37 +1,43 @@
-﻿using Domain.Models;
-using Infrastructure.Database;
+﻿using Application.Interfaces.RepositoryInterfaces;
+using Domain.Models;
 using MediatR;
 
 namespace Application.Commands.BookCommands.AddBook
 {
     public class AddBookCommandHandler : IRequestHandler<AddBookCommand, int>
     {
-        private readonly FakeDatabase _fakeDatabase;
+        private readonly IBookRepository _bookRepository;
+        private readonly IAuthorRepository _authorRepository;
 
-        public AddBookCommandHandler(FakeDatabase fakeDatabase)
+        public AddBookCommandHandler(IBookRepository bookRepository, IAuthorRepository authorRepository)
         {
-            _fakeDatabase = fakeDatabase ?? throw new ArgumentNullException(nameof(fakeDatabase));
+            _bookRepository = bookRepository ?? throw new ArgumentNullException(nameof(bookRepository));
+            _authorRepository = authorRepository ?? throw new ArgumentNullException(nameof(authorRepository));
         }
 
-        public Task<int> Handle(AddBookCommand request, CancellationToken cancellationToken)
+        public async Task<int> Handle(AddBookCommand request, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Description))
             {
                 throw new ArgumentException("Title and description are required.");
             }
 
-            var authorExists = _fakeDatabase.Authors.Any(author => author.Id == request.AuthorId);
-            if (!authorExists)
+            var authorExists = _authorRepository.GetByIdAsync(request.AuthorId);
+            if (authorExists == null)
             {
                 throw new ArgumentException($"Author with ID {request.AuthorId} does not exist.");
             }
 
-            var newBookId = _fakeDatabase.Books.Max(book => book.Id) + 1;
+            var newBook = new Book
+            {
+                Title = request.Title,
+                Description = request.Description,
+                AuthorId = request.AuthorId,
+            };
 
-            var newBook = new Book(newBookId, request.Title, request.Description, request.AuthorId);
-            _fakeDatabase.Books.Add(newBook);
+            await _bookRepository.AddAsync(newBook);
 
-            return Task.FromResult(newBookId);
+            return newBook.Id;
         }
     }
 }

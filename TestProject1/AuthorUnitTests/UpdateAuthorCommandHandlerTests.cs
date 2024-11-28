@@ -1,53 +1,59 @@
 ﻿using Application.Commands.AuthorCommands.UpdateAuthor;
-using Infrastructure.Database;
+using Application.Interfaces.RepositoryInterfaces;
+using Domain.Models;
+using Moq;
 
 namespace TestProject1.AuthorUnitTests
 {
     public class UpdateAuthorCommandHandlerTests
     {
-        private FakeDatabase _fakeDatabase;
+        private Mock<IAuthorRepository> _repositoryMock;
 
         [SetUp]
         public void Setup()
         {
-            _fakeDatabase = new FakeDatabase();
-        }
-
-        [Test]
-        public async Task UpdateAuthor_ShouldReturnNoContent_WhenAuthorUpdated()
-        {
-            var command = new UpdateAuthorCommand(1, "Updated Author Name");
-            var handler = new UpdateAuthorCommandHandler(_fakeDatabase);
-
-            var result = await handler.Handle(command, default);
-
-            Assert.IsTrue(result);
+            _repositoryMock = new Mock<IAuthorRepository>();
         }
 
         [Test]
         public async Task UpdateAuthor_ShouldReturnTrue_WhenAuthorExists()
         {
-            var command = new UpdateAuthorCommand(1, "New Author Name");
-            var handler = new UpdateAuthorCommandHandler(_fakeDatabase);
+            var existingAuthorId = 1;
+            var existingAuthor = new Author { Id = existingAuthorId, Name = "Old Author Name" };
 
-            var result = await handler.Handle(command, default);
+            _repositoryMock.Setup(r => r.GetByIdAsync(existingAuthorId))
+                .ReturnsAsync(existingAuthor);
+
+            _repositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Author>()))
+                .Returns(Task.CompletedTask);
+
+            var command = new UpdateAuthorCommand(existingAuthorId, "Updated Author Name");
+            var handler = new UpdateAuthorCommandHandler(_repositoryMock.Object);
+
+            var result = await handler.Handle(command, CancellationToken.None);
 
             Assert.IsTrue(result);
+            Assert.AreEqual("Updated Author Name", existingAuthor.Name);
 
-            var updatedAuthor = _fakeDatabase.Authors.FirstOrDefault(a => a.Id == 1);
-            Assert.IsNotNull(updatedAuthor);
-            Assert.AreEqual("New Author Name", updatedAuthor.Name);
+            _repositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Author>()), Times.Once);
         }
 
         [Test]
         public async Task UpdateAuthor_ShouldReturnFalse_WhenAuthorNotFound()
         {
-            var command = new UpdateAuthorCommand(999, "Nonexistent Author");
-            var handler = new UpdateAuthorCommandHandler(_fakeDatabase);
+            var nonExistingAuthorId = 999;
 
-            var result = await handler.Handle(command, default);
+            _repositoryMock.Setup(r => r.GetByIdAsync(nonExistingAuthorId))
+                .ReturnsAsync((Author)null);
+
+            var command = new UpdateAuthorCommand(nonExistingAuthorId, "Nonexistent Author");
+            var handler = new UpdateAuthorCommandHandler(_repositoryMock.Object);
+
+            var result = await handler.Handle(command, CancellationToken.None);
 
             Assert.IsFalse(result);
+
+            _repositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Author>()), Times.Never);
         }
     }
 }
