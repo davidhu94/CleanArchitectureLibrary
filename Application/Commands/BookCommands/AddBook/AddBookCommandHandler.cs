@@ -22,7 +22,7 @@ namespace Application.Commands.BookCommands.AddBook
                 throw new ArgumentException("Title and description are required.");
             }
 
-            var authorExists = _authorRepository.GetByIdAsync(request.AuthorId);
+            var authorExists = await _authorRepository.GetByIdAsync(request.AuthorId);
             if (authorExists == null)
             {
                 throw new ArgumentException($"Author with ID {request.AuthorId} does not exist.");

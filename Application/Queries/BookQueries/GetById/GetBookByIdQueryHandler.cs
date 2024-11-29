@@ -19,7 +19,7 @@ namespace Application.Queries.BookQueries.GetById
 
             if (wantedBook == null)
             {
-                throw new KeyNotFoundException($"Book with ID {request.Id} not found.");
+                return null;
             }
 
             return wantedBook;

@@ -28,6 +28,7 @@ namespace TestProject1.BookUnitTests
             var result = await handler.Handle(command, default);
 
             Assert.That(result, Is.True);
+
             _bookRepositoryMock.Verify(x => x.DeleteAsync(bookIdToDelete), Times.Once);
         }
 

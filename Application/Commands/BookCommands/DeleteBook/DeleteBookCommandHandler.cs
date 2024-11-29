@@ -16,12 +16,18 @@ namespace Application.Commands.BookCommands.DeleteBook
         {
             if (request.Id <= 0)
             {
-                throw new ArgumentException("Invalid book ID.");
+                throw new ArgumentException("Invalid book ID.", nameof(request.Id));
             }
 
-            var bookDeleted = await _repository.DeleteAsync(request.Id);
+            var book = await _repository.GetByIdAsync(request.Id);
 
-            return bookDeleted;
+            if (book == null)
+            {
+                return false;
+            }
+
+            await _repository.DeleteAsync(request.Id);
+            return true;
         }
     }
 }

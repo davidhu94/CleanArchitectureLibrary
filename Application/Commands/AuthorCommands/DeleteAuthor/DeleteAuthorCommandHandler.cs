@@ -15,15 +15,15 @@ namespace Application.Commands.AuthorCommands.DeleteAuthor
 
         public async Task<bool> Handle(DeleteAuthorCommand request, CancellationToken cancellationToken)
         {
-            if (request.Id <= 0)
+            var author = await _repository.GetByIdAsync(request.Id);
+
+            if (author == null)
             {
-                throw new ArgumentException("Invalid author ID.");
+                return false;
             }
 
-            var wasDeleted = await _repository.DeleteAsync(request.Id);
-
-            
-            return wasDeleted;
+            await _repository.DeleteAsync(request.Id);
+            return true;
         }
     }
 }
