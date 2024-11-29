@@ -1,8 +1,8 @@
-﻿
-using Application.Commands.AuthorCommands.UpdateAuthor;
-using Application.Commands.BookCommands.AddBook;
+﻿using Application.Commands.BookCommands.AddBook;
 using Application.Commands.BookCommands.DeleteBook;
 using Application.Commands.BookCommands.UpdateBook;
+using Application.DTOs.BookDTOs;
+using Application.Mappers;
 using Application.Queries.BookQueries.GetAll;
 using Application.Queries.BookQueries.GetById;
 using Domain.Models;
@@ -24,8 +24,16 @@ namespace API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllBooks()
         {
-            var books = await _mediator.Send(new GetAllBooksQuery());
-            return Ok(books);
+            try
+            {
+                var books = await _mediator.Send(new GetAllBooksQuery());
+                var bookDtos = books.Select(BookMapper.ToDto).ToList();
+                return Ok(bookDtos);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
         }
 
         [HttpGet("{id}")]
@@ -41,49 +49,52 @@ namespace API.Controllers
             {
                 return NotFound($"The book with ID {id} was not found.");
             }
-
-            return Ok(book);
+            var bookDto = BookMapper.ToDto(book);
+            return Ok(bookDto);
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddBook([FromBody] AddBookCommand command)
+        public async Task<IActionResult> AddBook([FromBody] AddBookDto addBookDto)
         {
-            if (command == null)
+            if (addBookDto == null)
             {
                 return BadRequest("Book data is required.");
             }
 
+            //var command = BookMapper.ToModel(addBookDto);
+            var command = new AddBookCommand(addBookDto.Title, addBookDto.Description, addBookDto.AuthorId);
             var newBookId = await _mediator.Send(command);
 
             return CreatedAtAction(nameof(GetBookById), new { id = newBookId }, new { id = newBookId });
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateBook(int id, [FromBody] Book updatedBook)
+        public async Task<IActionResult> UpdateBook(int id, [FromBody] UpdateBookDto updateBookDto)
         {
-            if (updatedBook == null)
+            if (updateBookDto == null)
             {
                 return BadRequest("Updated book data is required.");
             }
 
-            if (id != updatedBook.Id)
+            if (id != updateBookDto.Id)
             {
                 return BadRequest("The Id in the URL must match the book Id in the body.");
             }
 
-            if (string.IsNullOrWhiteSpace(updatedBook.Title))
+            if (string.IsNullOrWhiteSpace(updateBookDto.Title))
             {
                 return BadRequest("Book title is required.");
             }
 
-            if (updatedBook.AuthorId <= 0)
+            if (updateBookDto.AuthorId <= 0)
             {
                 return BadRequest("A valid Author ID is required.");
             }
 
-            var command = new UpdateBookCommand(updatedBook.Id, updatedBook.Title, updatedBook.Description, updatedBook.AuthorId);
+            var command = BookMapper.ToUpdateCommand(updateBookDto);
 
             var result = await _mediator.Send(command);
+
             if (!result)
             {
                 return NotFound($"Book with ID {id} was not found.");

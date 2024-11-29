@@ -2,9 +2,6 @@
 using Application.Interfaces.RepositoryInterfaces;
 using Domain.Models;
 using Moq;
-using NUnit.Framework;
-using System;
-using System.Threading.Tasks;
 
 namespace TestProject1.BookUnitTests
 {
@@ -29,12 +26,15 @@ namespace TestProject1.BookUnitTests
             _authorRepositoryMock.Setup(repo => repo.GetByIdAsync(1))
                 .ReturnsAsync(new Author { Id = 1, Name = "Existing Author" });
 
+            var newBook = new Book { Id = 1, Title = command.Title, Description = command.Description, AuthorId = command.AuthorId };
             _bookRepositoryMock.Setup(repo => repo.AddAsync(It.IsAny<Book>()))
+                .Callback<Book>(book => book.Id = 1)
                 .Returns(Task.CompletedTask);
 
             var result = await handler.Handle(command, default);
 
             Assert.That(result, Is.GreaterThan(0));
+
             _bookRepositoryMock.Verify(repo => repo.AddAsync(It.IsAny<Book>()), Times.Once);
         }
 
