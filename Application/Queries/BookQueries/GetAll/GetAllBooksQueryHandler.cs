@@ -16,7 +16,7 @@ namespace Application.Queries.BookQueries.GetAll
         public async Task<List<Book>> Handle(GetAllBooksQuery request, CancellationToken cancellationToken)
         {
             var authors = await _repository.GetAllAsync();
-            return authors.ToList();
+            return authors?.ToList() ?? new List<Book>();
         }
     }
 }

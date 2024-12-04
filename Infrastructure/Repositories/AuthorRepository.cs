@@ -11,31 +11,46 @@ namespace Infrastructure.Repositories
 
         public AuthorRepository(RealDatabase db)
         {
-            _db = db;
+            _db = db ?? throw new ArgumentNullException(nameof(db));
         }
 
         public async Task AddAsync(Author author)
         {
+            ArgumentNullException.ThrowIfNull(author);
             await _db.Authors.AddAsync(author);
             await _db.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<Author>> GetAllAsync()
         {
-            return await _db.Authors.ToListAsync();
+            return await _db.Authors
+                            .AsNoTracking()
+                            .ToListAsync();
         }
-        public async Task<Author> GetByIdAsync(int id)
+        public async Task<Author?> GetByIdAsync(int? id)
         {
-            return await _db.Authors.FindAsync(id);
+            return await _db.Authors
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(a => a.Id == id);
         }
 
-        public Task<IEnumerable<Author>> GetAuthorsWithBooksAsync()
+        public async Task<IEnumerable<Author>> GetAuthorsWithBooksAsync()
         {
             throw new NotImplementedException();
         }
 
         public async Task UpdateAsync(Author author)
         {
+            ArgumentNullException.ThrowIfNull(author);
+
+            var existingAuthor = await _db.Authors
+                                           .AsNoTracking()
+                                           .FirstOrDefaultAsync(a => a.Id == author.Id);
+            if (existingAuthor == null)
+            {
+                throw new KeyNotFoundException($"Author with Id {author.Id} not found.");
+            }
+
             _db.Authors.Update(author);
             await _db.SaveChangesAsync();
         }

@@ -2,11 +2,6 @@
 using Domain.Models;
 using Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Infrastructure.Repositories
 {
@@ -17,31 +12,51 @@ namespace Infrastructure.Repositories
 
         public BookRepository(RealDatabase db)
         {
-            _db = db;
+            _db = db ?? throw new ArgumentNullException(nameof(db));
         }
         public async Task AddAsync(Book book)
         {
+            ArgumentNullException.ThrowIfNull(book);
             await _db.Books.AddAsync(book);
             await _db.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<Book>> GetAllAsync()
         {
-            return await _db.Books.ToListAsync();
+            return await _db.Books
+                            .AsNoTracking()
+                            .ToListAsync();
         }
-        public async Task<Book> GetByIdAsync(int id)
+        public async Task<Book?> GetByIdAsync(int? id)
         {
-            return await _db.Books.FindAsync(id);
+            return await _db.Books
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(b => b.Id == id);
         }
 
-        public Task<IEnumerable<Book>> GetBooksByAuthorIdAsync(int authorId)
+        public async Task<IEnumerable<Book>> GetBooksByAuthorIdAsync(int authorId)
         {
-            throw new NotImplementedException();
+            return await _db.Books
+                .AsNoTracking()
+                .Where(b => b.AuthorId == authorId)
+                .ToListAsync();
         }
 
         public async Task UpdateAsync(Book book)
         {
-            _db.Books.Update(book);
+            ArgumentNullException.ThrowIfNull(book);
+
+            var existingBook = await _db.Books.AsNoTracking().FirstOrDefaultAsync(b => b.Id == book.Id);
+            if (existingBook == null)
+            {
+                throw new KeyNotFoundException($"No book found with ID {book.Id}");
+            }
+
+            //_db.Books.Update(book);
+            //await _db.SaveChangesAsync();
+
+            _db.Books.Attach(book); // Attach ensures entity tracking if it's detached.
+            _db.Entry(book).State = EntityState.Modified;
             await _db.SaveChangesAsync();
         }
 
@@ -53,7 +68,7 @@ namespace Infrastructure.Repositories
                 return false;
             }
             _db.Books.Remove(book);
-            _db.SaveChanges();
+            await _db.SaveChangesAsync();
             return true;
         }
     }

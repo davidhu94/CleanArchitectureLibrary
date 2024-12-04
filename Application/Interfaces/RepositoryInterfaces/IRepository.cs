@@ -14,7 +14,7 @@ namespace Application.Interfaces.RepositoryInterfaces
 
         Task<IEnumerable<T>> GetAllAsync();
 
-        Task<T> GetByIdAsync(int id);
+        Task<T?> GetByIdAsync(int? id);
 
         Task<bool> DeleteAsync(int id);
     }
@@ -27,5 +27,11 @@ namespace Application.Interfaces.RepositoryInterfaces
     public interface IBookRepository : IRepository<Book>
     {
         Task<IEnumerable<Book>> GetBooksByAuthorIdAsync(int authorId);
+    }
+
+    public interface IUserRepository : IRepository<User>
+    {
+        Task<User> GetByUsernameAsync(string username);
+        //Task<IEnumerable<User>> GetBooksByUserIdAsync(Guid userId);
     }
 }

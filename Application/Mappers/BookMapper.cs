@@ -25,7 +25,6 @@ namespace Application.Mappers
                 Title = addBookDto.Title,
                 Description = addBookDto.Description
             };
-
         }
 
         public static Book ToModel(UpdateBookDto updateBookDto)
