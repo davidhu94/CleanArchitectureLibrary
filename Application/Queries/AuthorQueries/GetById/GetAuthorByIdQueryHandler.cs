@@ -19,7 +19,7 @@ namespace Application.Queries.AuthorQueries.GetById
 
             if (wantedAuthor == null)
             {
-                return null;
+                throw new KeyNotFoundException($"Author with ID {request.Id} was not found.");
             }
 
             return wantedAuthor;

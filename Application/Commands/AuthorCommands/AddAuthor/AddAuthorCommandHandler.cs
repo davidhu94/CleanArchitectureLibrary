@@ -17,13 +17,23 @@ namespace Application.Commands.AuthorCommands.AddAuthor
 
             if (string.IsNullOrWhiteSpace(request.Name))
             {
-                throw new ArgumentException("Author name is required.");
+                throw new ArgumentNullException(nameof(request.Name),"Author name is required.");
             }
 
             var newAuthor = new Author(request.Name);
-            await _repository.AddAsync(newAuthor);
 
-            return newAuthor.Id;
+            try
+            {
+                await _repository.AddAsync(newAuthor);
+
+                return newAuthor.Id;
+            }
+
+            catch (Exception ex)
+            {
+                throw new ApplicationException("An error occurred while adding the author.", ex);
+            }
+
         }
     }
 }

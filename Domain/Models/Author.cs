@@ -5,13 +5,6 @@ namespace Domain.Models
     {
         public int Id { get; set; }
         public string? Name { get; set; }
-
-        //public Author(int id, string? name)
-        //{
-        //    Id = id;
-        //    Name = name;
-        //}
-
         public Author() { }
 
         public Author(string? name)

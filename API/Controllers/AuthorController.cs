@@ -6,22 +6,28 @@ using Application.Mappers;
 using Application.Queries.AuthorQueries.GetAll;
 using Application.Queries.AuthorQueries.GetById;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers
 {
+    
     [ApiController]
     [Route("[controller]")]
+    [Authorize]
     public class AuthorController : Controller
     {
         public readonly IMediator _mediator;
+        private readonly ILogger<AuthorController> _logger;
 
-        public AuthorController(IMediator mediator)
+        public AuthorController(IMediator mediator, ILogger<AuthorController> logger)
         {
             _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [HttpGet]
+        [ResponseCache(CacheProfileName = "DefaultCache")]
         public async Task<IActionResult> GetAllAuthors()
         {
             try
@@ -32,7 +38,7 @@ namespace API.Controllers
             }
             catch (Exception ex)
             {
-
+                _logger.LogError(ex, "An error occurred while fetching authors.");
                 return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
@@ -63,12 +69,16 @@ namespace API.Controllers
                 return BadRequest("Author data is required.");
             }
 
-            var author = AuthorMapper.ToModel(addAuthorDto);
-            var command = new AddAuthorCommand(author.Name);
+            //var author = AuthorMapper.ToModel(addAuthorDto);
+            //var command = new AddAuthorCommand(author.Name);
 
+            //var newAuthorId = await _mediator.Send(command);
+
+            //return CreatedAtAction(nameof(GetAuthorById), new { id = newAuthorId }, new { id = newAuthorId });
+            var command = new AddAuthorCommand(addAuthorDto.Name);
             var newAuthorId = await _mediator.Send(command);
 
-            return CreatedAtAction(nameof(GetAuthorById), new { id = newAuthorId }, new { id = newAuthorId });
+            return CreatedAtAction(nameof(GetAuthorById), new { id = newAuthorId }, new { id = newAuthorId, name = addAuthorDto.Name });
         }
 
         [HttpPut("{id}")]
@@ -90,9 +100,9 @@ namespace API.Controllers
                 return BadRequest("Author name is required.");
             }
 
-            var author = AuthorMapper.ToModel(updateAuthorDto);
-            var command = new UpdateAuthorCommand(author.Id, author.Name);
-
+            //var author = AuthorMapper.ToModel(updateAuthorDto);
+            //var command = new UpdateAuthorCommand(author.Id, author.Name);
+            var command = new UpdateAuthorCommand(updateAuthorDto.Id, updateAuthorDto.Name);
             var updated = await _mediator.Send(command);
 
             if (!updated)

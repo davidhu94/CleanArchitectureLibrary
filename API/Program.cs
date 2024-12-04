@@ -1,7 +1,7 @@
 using Application;
 using Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -15,11 +15,8 @@ namespace API
 
             // Add services to the container.
 
+            //builder.Services.AddControllers();
 
-            //builder.Services.AddAuthorization();
-
-
-            builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -27,7 +24,34 @@ namespace API
             builder.Services.AddApplication();
             builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("DefaultConnection")!);
 
-            //builder.Services.AddAutoMapper(typeof(AuthorProfile).Assembly);
+            builder.Services.AddControllers(options =>
+            {
+                options.CacheProfiles.Add("DefaultCache", new CacheProfile()
+                {
+                    Duration = 60,
+                    Location = ResponseCacheLocation.Any
+                });
+            });
+
+            builder.Services.AddMemoryCache();
+
+            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                        ValidAudience = builder.Configuration["Jwt:Audience"],
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Token"]!))
+                    };
+                });
+
+
+            builder.Services.AddAuthorization();
 
             var app = builder.Build();
 
@@ -42,7 +66,6 @@ namespace API
 
             app.UseAuthentication();
             app.UseAuthorization();
-
 
             app.MapControllers();
 

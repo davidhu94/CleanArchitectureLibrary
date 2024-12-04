@@ -1,24 +1,27 @@
 ﻿using Application.Commands.BookCommands.AddBook;
 using Application.Commands.BookCommands.DeleteBook;
-using Application.Commands.BookCommands.UpdateBook;
 using Application.DTOs.BookDTOs;
 using Application.Mappers;
 using Application.Queries.BookQueries.GetAll;
 using Application.Queries.BookQueries.GetById;
-using Domain.Models;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize]
     public class BookController : ControllerBase
     {
         public readonly IMediator _mediator;
-        public BookController(IMediator mediator)
+        private readonly ILogger<BookController> _logger;
+        public BookController(IMediator mediator, ILogger<BookController> logger)
         {
             _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [HttpGet]
@@ -32,6 +35,7 @@ namespace API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "An error occurred while fetching books.");
                 return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
@@ -65,7 +69,7 @@ namespace API.Controllers
             var command = new AddBookCommand(addBookDto.Title, addBookDto.Description, addBookDto.AuthorId);
             var newBookId = await _mediator.Send(command);
 
-            return CreatedAtAction(nameof(GetBookById), new { id = newBookId }, new { id = newBookId });
+            return CreatedAtAction(nameof(GetBookById), new { id = newBookId }, new { id = newBookId, title = addBookDto.Title });
         }
 
         [HttpPut("{id}")]

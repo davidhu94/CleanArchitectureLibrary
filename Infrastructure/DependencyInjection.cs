@@ -1,4 +1,6 @@
 ﻿using Application.Interfaces.RepositoryInterfaces;
+using Application.Interfaces.ServiceInterfaces;
+using Application.Services;
 using Infrastructure.Database;
 using Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +12,7 @@ namespace Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
         {
-
+            services.AddScoped<ITokenService, TokenService>();
 
             services.AddDbContext<RealDatabase>(options => 
             options.UseSqlServer(connectionString)
@@ -18,6 +20,7 @@ namespace Infrastructure
 
             services.AddScoped<IAuthorRepository, AuthorRepository>();
             services.AddScoped<IBookRepository, BookRepository>();
+            services.AddScoped<IUserRepository, UserRepository>();
 
             return services;
         }
