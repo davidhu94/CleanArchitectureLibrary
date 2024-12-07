@@ -1,4 +1,4 @@
-﻿using Application.Commands.BookCommands.UpdateBook;
+﻿using Application.Books.BookCommands.UpdateBook;
 using Application.DTOs.BookDTOs;
 using Domain.Models;
 

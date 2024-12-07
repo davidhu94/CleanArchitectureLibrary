@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Application.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Application
 {
@@ -8,6 +9,8 @@ namespace Application
         {
             var assembly = typeof(DependencyInjection).Assembly;
             services.AddMediatR(configuration => configuration.RegisterServicesFromAssembly(assembly));
+
+            services.AddScoped<TokenService>();
             return services;
         }
     }

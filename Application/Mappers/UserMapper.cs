@@ -1,5 +1,5 @@
-﻿using Application.Commands.UserCommands.UpdateUser;
-using Application.DTOs.UserDTOs;
+﻿using Application.DTOs.UserDTOs;
+using Application.Users.UserCommands.UpdateUser;
 using Domain.Models;
 
 namespace Application.Mappers
@@ -11,8 +11,7 @@ namespace Application.Mappers
             return new UserDto
             {
                 Id = user.Id,
-                UserName = user.UserName,
-                Password = user.PasswordHash
+                UserName = user.UserName
             };
         }
 
@@ -31,7 +30,7 @@ namespace Application.Mappers
             {
                 Id = updateUserDto.Id,
                 UserName = updateUserDto.UserName,
-                PasswordHash = updateUserDto.Password
+                PasswordHash = updateUserDto.PasswordHash
             };
         }
 
@@ -40,7 +39,16 @@ namespace Application.Mappers
             return new UpdateUserCommand(
                 updateUserDto.Id,
                 updateUserDto.UserName,
-                updateUserDto.Password);
+                updateUserDto.PasswordHash);
+        }
+
+        public static User ToModel(LoginDto loginDto)
+        {
+            return new User
+            {
+                UserName = loginDto.UserName
+                
+            };
         }
     }
 }
