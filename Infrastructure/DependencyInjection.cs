@@ -14,7 +14,7 @@ namespace Infrastructure
         {
             services.AddScoped<ITokenService, TokenService>();
 
-            services.AddDbContext<RealDatabase>(options => 
+            services.AddDbContext<RealDatabase>(options =>
             options.UseSqlServer(connectionString)
             );
 

@@ -1,19 +1,18 @@
-﻿using Application.Commands.BookCommands.AddBook;
-using Application.Commands.BookCommands.DeleteBook;
+﻿using Application.Books.BookCommands.AddBook;
+using Application.Books.BookCommands.DeleteBook;
+using Application.Books.BookQueries.GetAll;
+using Application.Books.BookQueries.GetById;
 using Application.DTOs.BookDTOs;
 using Application.Mappers;
-using Application.Queries.BookQueries.GetAll;
-using Application.Queries.BookQueries.GetById;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace API.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("[controller]")]
-    [Authorize]
     public class BookController : ControllerBase
     {
         public readonly IMediator _mediator;
@@ -29,9 +28,15 @@ namespace API.Controllers
         {
             try
             {
-                var books = await _mediator.Send(new GetAllBooksQuery());
-                var bookDtos = books.Select(BookMapper.ToDto).ToList();
-                return Ok(bookDtos);
+                var result = await _mediator.Send(new GetAllBooksQuery());
+
+                if (!result.IsSuccessful)
+                {
+                    _logger.LogWarning("An error occurred: {ErrorMessage}", result.ErrorMessage);
+                    return StatusCode(StatusCodes.Status500InternalServerError, result.ErrorMessage);
+                }
+
+                return Ok(result.Data);
             }
             catch (Exception ex)
             {
@@ -48,81 +53,120 @@ namespace API.Controllers
                 return BadRequest("Book ID must be greater than zero.");
             }
 
-            var book = await _mediator.Send(new GetBookByIdQuery(id));
-            if (book == null)
+            try
             {
-                return NotFound($"The book with ID {id} was not found.");
+                var result = await _mediator.Send(new GetBookByIdQuery(id));
+
+                if (!result.IsSuccessful)
+                {
+                    return NotFound(result.ErrorMessage);
+                }
+
+                return Ok(result.Data);
             }
-            var bookDto = BookMapper.ToDto(book);
-            return Ok(bookDto);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while fetching the book with ID {BookId}.", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while fetching the book.");
+            }
         }
+
 
         [HttpPost]
         public async Task<IActionResult> AddBook([FromBody] AddBookDto addBookDto)
         {
-            if (addBookDto == null)
+            if (addBookDto == null || string.IsNullOrWhiteSpace(addBookDto.Title))
             {
-                return BadRequest("Book data is required.");
+                _logger.LogWarning("AddBook endpoint called with invalid data.");
+                return BadRequest("Book data and title are required.");
             }
 
-            //var command = BookMapper.ToModel(addBookDto);
-            var command = new AddBookCommand(addBookDto.Title, addBookDto.Description, addBookDto.AuthorId);
-            var newBookId = await _mediator.Send(command);
+            try
+            {
+                var command = new AddBookCommand(addBookDto.Title, addBookDto.Description, addBookDto.AuthorId);
+                var result = await _mediator.Send(command);
 
-            return CreatedAtAction(nameof(GetBookById), new { id = newBookId }, new { id = newBookId, title = addBookDto.Title });
+                if (!result.IsSuccessful)
+                {
+                    _logger.LogWarning("Failed to add book: {ErrorMessage}", result.ErrorMessage);
+                    return BadRequest(result.ErrorMessage);
+                }
+
+                _logger.LogInformation("Book created successfully with ID: {BookId}", result.Data.Id);
+                return CreatedAtAction(nameof(GetBookById), new { id = result.Data.Id }, result.Data);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while adding the book.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while adding the book.");
+            }
         }
+
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateBook(int id, [FromBody] UpdateBookDto updateBookDto)
         {
-            if (updateBookDto == null)
+            if (updateBookDto == null || id <= 0 || id != updateBookDto.Id 
+                || string.IsNullOrWhiteSpace(updateBookDto.Title) 
+                || string.IsNullOrWhiteSpace(updateBookDto.Description) 
+                || updateBookDto.AuthorId <= 0)
             {
-                return BadRequest("Updated book data is required.");
+                _logger.LogWarning("Invalid data for book update.");
+                return BadRequest("Invalid book data.");
             }
 
-            if (id != updateBookDto.Id)
+            try
             {
-                return BadRequest("The Id in the URL must match the book Id in the body.");
-            }
+                var command = BookMapper.ToUpdateCommand(updateBookDto);
+                var result = await _mediator.Send(command);
 
-            if (string.IsNullOrWhiteSpace(updateBookDto.Title))
+                if (!result.IsSuccessful)
+                {
+                    _logger.LogWarning("Failed to update book with ID {BookId}: {ErrorMessage}", id, result.ErrorMessage);
+                    return NotFound(result.ErrorMessage);
+                }
+
+                _logger.LogInformation("Successfully updated book with ID: {BookId}", id);
+                return NoContent();
+            }
+            catch (Exception ex)
             {
-                return BadRequest("Book title is required.");
+                _logger.LogError(ex, "An error occurred while updating the book with ID {BookId}.", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the book.");
             }
-
-            if (updateBookDto.AuthorId <= 0)
-            {
-                return BadRequest("A valid Author ID is required.");
-            }
-
-            var command = BookMapper.ToUpdateCommand(updateBookDto);
-
-            var result = await _mediator.Send(command);
-
-            if (!result)
-            {
-                return NotFound($"Book with ID {id} was not found.");
-            }
-
-            return NoContent();
         }
+
+
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteBook(int id)
         {
             if (id <= 0)
             {
+                _logger.LogWarning("DeleteBook endpoint called with invalid ID: {Id}", id);
                 return BadRequest("Book ID must be greater than zero.");
             }
 
-            var book = await _mediator.Send(new GetBookByIdQuery(id));
-            if (book == null)
+            try
             {
-                return NotFound($"Book with ID {id} was not found.");
-            }
+                var command = new DeleteBookCommand(id);
+                var result = await _mediator.Send(command);
 
-            await _mediator.Send(new DeleteBookCommand(id));
-            return NoContent();
+                if (!result.IsSuccessful)
+                {
+                    _logger.LogWarning("Attempted to delete book with ID: {Id}, but it was not found.", id);
+                    return NotFound(result.ErrorMessage);
+                }
+
+                _logger.LogInformation("Book with ID: {Id} successfully deleted.", id);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while deleting the book with ID {BookId}.", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while deleting the book.");
+            }
         }
+
     }
 }
